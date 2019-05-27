@@ -266,7 +266,7 @@ export default class MapboxDirections {
   }
 
   _onSingleClick(e) {
-    const { origin } = store.getState();
+    const { origin, disableDestination } = store.getState();
     const coords = [e.lngLat.lng, e.lngLat.lat];
 
     if (!origin.geometry) {
@@ -296,7 +296,11 @@ export default class MapboxDirections {
           this.actions.setRouteIndex(index);
         }
       } else {
-        this.actions.setDestinationFromCoordinates(coords);
+        if(disableDestination) {
+          this.actions.setOriginFromCoordinates(coords);
+        } else {
+          this.actions.setDestinationFromCoordinates(coords);
+        }
         this._map.flyTo({ center: coords });
       }
     }
@@ -351,13 +355,17 @@ export default class MapboxDirections {
   _onDragMove(e) {
     if (!this.isDragging) return;
 
+    const { disableDestination } = store.getState();
+
     const coords = [e.lngLat.lng, e.lngLat.lat];
     switch (this.isDragging.layer.id) {
       case 'directions-origin-point':
         this.actions.createOrigin(coords);
       break;
       case 'directions-destination-point':
-        this.actions.createDestination(coords);
+        if(!disableDestination) {
+          this.actions.createDestination(coords);
+        }
       break;
       case 'directions-hover-point':
         this.actions.hoverMarker(coords);
@@ -368,14 +376,16 @@ export default class MapboxDirections {
   _onDragUp() {
     if (!this.isDragging) return;
 
-    const { hoverMarker, origin, destination } = store.getState();
+    const { hoverMarker, origin, destination, disableDestination } = store.getState();
 
     switch (this.isDragging.layer.id) {
       case 'directions-origin-point':
         this.actions.setOriginFromCoordinates(origin.geometry.coordinates);
       break;
       case 'directions-destination-point':
-        this.actions.setDestinationFromCoordinates(destination.geometry.coordinates);
+        if(!disableDestination) {
+          this.actions.setDestinationFromCoordinates(destination.geometry.coordinates);
+        }
       break;
       case 'directions-hover-point':
         // Add waypoint if a sufficent amount of dragging has occurred.
@@ -554,5 +564,13 @@ export default class MapboxDirections {
   on(type, fn) {
     this.actions.eventSubscribe(type, fn);
     return this;
+  }
+
+  /**
+   * Returns the profile of the current route.
+   * @returns {String} profile
+   */
+  getProfile() {
+    return store.getState().profile;
   }
 }
